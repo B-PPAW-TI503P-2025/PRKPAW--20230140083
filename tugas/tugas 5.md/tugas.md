@@ -1,0 +1,5 @@
+Endpoint update data presensi : ![alt text](image.png)
+Endpoint update jika format tanggal yang diisi tidak valid : ![alt text](image-4.png)
+Endpoint delete data : ![alt text](image-1.png)
+Enpoint search berdasarkan nama : ![alt text](image-2.png)
+Endpoint search berdasarkan tanggal : ![alt text](image-3.png)
