@@ -1,3 +1,5 @@
+console.log("REPORT CONTROLLER LOADED!!!");
+
 const { Presensi } = require("../models");
 const { Op } = require("sequelize");
 
