@@ -1,126 +1,174 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-// PERBAIKAN KRITIS: Menggunakan Named Import { jwtDecode }
-import { jwtDecode } from 'jwt-decode'; 
+// src/components/Navbar.jsx   ← taruh di sini
 
-/**
- * Komponen Navbar untuk aplikasi.
- * Menampilkan nama pengguna, menu berdasarkan peran (role), dan tombol Logout.
- */
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+import { Menu, X, LogOut } from "lucide-react";
+
 function Navbar() {
-  const [userName, setUserName] = useState('');
-  const [userRole, setUserRole] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  let user = null;
 
-  useEffect(() => {
-    // Fungsi ini dipanggil hanya sekali saat komponen dimuat
-    const token = localStorage.getItem('token');
-
-    if (token) {
-      try {
-        // 2. Decode token untuk mendapatkan data pengguna
-        const decoded = jwtDecode(token);
-        
-        // Pastikan token belum kadaluarsa dan data pengguna ada
-        // exp * 1000 mengubah detik Unix menjadi milidetik JS
-        if (decoded && decoded.exp * 1000 > Date.now()) {
-          setUserName(decoded.nama || 'Pengguna'); // Ambil user.nama
-          setUserRole(decoded.role || 'user');    // Ambil user.role
-        } else {
-          // Token kadaluarsa, hapus dan paksa logout
-          handleLogout();
-        }
-      } catch (error) {
-        // Jika token tidak valid atau error saat decode
-        console.error("Gagal mendecode token:", error);
-        handleLogout();
-      }
-    } else {
-      // Jika tidak ada token (misal: baru load), reset state.
-      // Catatan: Jika token tidak ada, pengguna akan diarahkan ke /login 
-      // oleh komponen router <ProtectedRoute> di App.js
-      setUserName('');
-      setUserRole('');
+  const token = localStorage.getItem("token");
+  if (token) {
+    try {
+      user = jwtDecode(token);
+    } catch (err) {
+      localStorage.removeItem("token");
+      navigate("/login");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Dependensi kosong: hanya jalankan saat mount
-
-  /**
-   * Fungsi untuk proses Logout.
-   * Menghapus token dan mengarahkan pengguna ke halaman login.
-   */
-  const handleLogout = () => {
-    // Menghapus token dari Local Storage
-    localStorage.removeItem('token');
-    
-    // Reset state lokal
-    setUserName('');
-    setUserRole('');
-
-    // Navigasi ke halaman /login
-    navigate('/login');
-  };
-
-  // Jika tidak ada nama pengguna, tampilkan Navbar kosong atau navigasi ke login
-  if (!userName) {
-    return null; // Tidak menampilkan Navbar jika pengguna belum terautentikasi
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
+  if (!user) return null;
+
+  const isActive = (path) => location.pathname === path;
+
+  // Warna aktif KONSISTEN untuk semua menu
+  const activeClass = "bg-blue-100 text-blue-700 font-semibold shadow-sm";
+  const inactiveClass = "text-gray-600 hover:bg-gray-50 hover:text-gray-900";
+
   return (
-    <nav className="fixed top-0 left-0 w-full bg-indigo-700 shadow-lg z-10">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo/Nama Aplikasi */}
-          <div className="flex-shrink-0">
-            <Link to="/dashboard" className="text-white text-2xl font-bold tracking-wider">
-              PRKPAW App
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link to="/dashboard" className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-md">
+                <span className="text-white font-bold text-lg">AP</span>
+              </div>
+              <span className="text-xl font-bold text-gray-800 hidden sm:block">
+                Aplikasi Presensi
+              </span>
             </Link>
           </div>
 
-          {/* Link Navigasi dan Info Pengguna */}
-          <div className="flex items-center space-x-6">
-            
-            {/* Info Pengguna */}
-            <span className="text-white text-sm font-light hidden sm:inline">
-              Halo, <span className="font-semibold">{userName}</span> (Role: {userRole.toUpperCase()})
-            </span>
-            
-            {/* Menu Default */}
-            <Link 
-              to="/dashboard" 
-              className="text-indigo-200 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150"
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center space-x-3">
+            <Link
+              to="/dashboard"
+              className={`px-6 py-2.5 rounded-full font-medium transition-all ${
+                isActive("/dashboard") ? activeClass : inactiveClass
+              }`}
             >
               Dashboard
             </Link>
-            
-            {/* Tampilkan Menu Presensi (untuk semua user, bisa diganti) */}
-            <Link 
-              to="/presensi" 
-              className="text-indigo-200 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150"
+
+            <Link
+              to="/attendance"
+              className={`px-6 py-2.5 rounded-full font-medium transition-all ${
+                isActive("/attendance") ? activeClass : inactiveClass
+              }`}
             >
               Presensi
             </Link>
 
-            {/* Tampilkan Menu Khusus Admin */}
-            {userRole === 'admin' && (
-              <Link 
-                to="/laporan-admin" 
-                className="text-yellow-300 bg-indigo-600 hover:bg-indigo-500 px-3 py-2 rounded-md text-sm font-bold transition duration-150 shadow-md"
+            {user.role === "admin" && (
+              <Link
+                to="/reports"
+                className={`px-6 py-2.5 rounded-full font-medium transition-all ${
+                  isActive("/reports") ? activeClass : inactiveClass
+                }`}
+              >
+                Laporan Admin
+              </Link>
+            )}
+          </div>
+
+          {/* Desktop User + Logout */}
+          <div className="hidden md:flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                {user.nama.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  {user.nama}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-md"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
+            </button>
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden text-gray-700"
+          >
+            {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-t border-gray-200">
+          <div className="px-4 py-5 space-y-3">
+            <div className="flex items-center space-x-3 pb-4 border-b border-gray-200">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                {user.nama.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800">{user.nama}</p>
+                <p className="text-sm text-gray-500 capitalize">{user.role}</p>
+              </div>
+            </div>
+
+            <Link
+              to="/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-6 py-3 rounded-full font-medium ${
+                isActive("/dashboard") ? activeClass : "text-gray-700"
+              }`}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/attendance"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-6 py-3 rounded-full font-medium ${
+                isActive("/attendance") ? activeClass : "text-gray-700"
+              }`}
+            >
+              Presensi
+            </Link>
+            {user.role === "admin" && (
+              <Link
+                to="/reports"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-6 py-3 rounded-full font-medium ${
+                  isActive("/reports") ? activeClass : "text-gray-700"
+                }`}
               >
                 Laporan Admin
               </Link>
             )}
 
-            {/* Tombol Logout */}
-            <button 
-              onClick={handleLogout} 
-              className="px-4 py-2 bg-red-500 text-white font-semibold text-sm rounded-lg shadow-md hover:bg-red-600 transition duration-150 transform hover:scale-105"
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center space-x-2 bg-red-500 hover:bg-red-600 text-white py-3 rounded-full font-medium mt-4"
             >
-              Logout
+              <LogOut className="w-5 h-5" />
+              <span>Logout</span>
             </button>
           </div>
         </div>
-      </div>
+      )}
     </nav>
   );
 }
