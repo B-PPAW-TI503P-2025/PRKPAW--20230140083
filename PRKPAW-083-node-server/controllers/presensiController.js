@@ -1,54 +1,68 @@
-const { Presensi, User } = require("../models"); // Pastikan model User juga diimpor untuk join data
-const { format, isToday } = require("date-fns");
-const { utcToZonedTime } = require("date-fns-tz");
+const { Presensi } = require("../models");
+const { format } = require("date-fns-tz");
 const timeZone = "Asia/Jakarta";
-const todayDateString = format(new Date(), "yyyy-MM-dd");
 
-// --- Helper untuk mendapatkan waktu dan tanggal dalam zona waktu WIB ---
-const getWIBTime = (date) => utcToZonedTime(date, timeZone);
 
-/**
- * Controller untuk Check-In
- */
+// MULTER CONFIG 
+
+const multer = require("multer");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); 
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${req.user.id}-${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Hanya file gambar yang diperbolehkan!"), false);
+  }
+};
+
+exports.upload = multer({ storage: storage, fileFilter: fileFilter });
+
+
+// CHECK IN 
+
 exports.CheckIn = async (req, res) => {
   try {
-    // Ambil ID dari JWT payload
     const { id: userId, nama: userName } = req.user;
-    
-    // Perbaikan: Gunakan waktu sekarang dan tanggal string hari ini untuk query
-    const waktuSekarang = getWIBTime(new Date());
+    const waktuSekarang = new Date();
+    const { latitude, longitude } = req.body;
 
-    // 1. Cek duplikasi: Cari record hari ini (tanggal) yang dimiliki user
+    // Foto hasil Multer
+    const buktiFoto = req.file ? req.file.path : null;
+
     const existingRecord = await Presensi.findOne({
-      where: { 
-        userId: userId, 
-        tanggal: todayDateString // Filter berdasarkan tanggal hari ini
-      },
+      where: { userId: userId, checkOut: null },
     });
 
     if (existingRecord) {
-      // Perbaikan pesan: Sudah check-in HARI INI
       return res
         .status(400)
         .json({ message: "Anda sudah melakukan check-in hari ini." });
     }
 
-    // 2. Buat data baru
+    // Buat catatan baru
     const newRecord = await Presensi.create({
       userId: userId,
-      // PERBAIKAN PENTING: Kolom 'nama' dihapus dari sini.
-      checkInTime: waktuSekarang, // Menggunakan checkInTime
-      tanggal: todayDateString,
+      checkIn: waktuSekarang,
+      latitude: latitude || null,
+      longitude: longitude || null,
+      buktiFoto: buktiFoto,  
     });
-    
-    // Format data untuk respons
+
     const formattedData = {
-        userId: newRecord.userId,
-        // PERBAIKAN: Nama diambil dari req.user.nama (atau bisa di-join dari model User)
-        nama: userName, 
-        checkInTime: format(newRecord.checkInTime, "yyyy-MM-dd HH:mm:ssXXX", { timeZone }),
-        checkOutTime: null, // Menggunakan checkOutTime
-        tanggal: newRecord.tanggal,
+      userId: newRecord.userId,
+      checkIn: format(newRecord.checkIn, "yyyy-MM-dd HH:mm:ssXXX", { timeZone }),
+      checkOut: null,
+      buktiFoto: buktiFoto,
     };
 
     res.status(201).json({
@@ -60,44 +74,41 @@ exports.CheckIn = async (req, res) => {
       data: formattedData,
     });
   } catch (error) {
-    res.status(500).json({ message: "Terjadi kesalahan pada server", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Terjadi kesalahan pada server", error: error.message });
   }
 };
 
-/**
- * Controller untuk Check-Out
- */
+
+// CHECK OUT
+
 exports.CheckOut = async (req, res) => {
   try {
     const { id: userId, nama: userName } = req.user;
-    const waktuSekarang = getWIBTime(new Date());
+    const waktuSekarang = new Date();
 
-    // Cari record Check-In yang hari ini dan belum Check-Out
     const recordToUpdate = await Presensi.findOne({
-      where: { 
-        userId: userId, 
-        checkOutTime: null, // PERBAIKAN: Menggunakan checkOutTime
-        tanggal: todayDateString // Filter berdasarkan tanggal hari ini
-      },
+      where: { userId: userId, checkOut: null },
     });
 
     if (!recordToUpdate) {
-      return res.status(400).json({ // Status 400 lebih tepat daripada 404
-        message: "Tidak ditemukan catatan check-in yang aktif hari ini untuk di-check-out.",
+      return res.status(404).json({
+        message: "Tidak ditemukan catatan check-in yang aktif untuk Anda.",
       });
     }
 
-    // 5. Update kolom checkOutTime
-    recordToUpdate.checkOutTime = waktuSekarang;
+    recordToUpdate.checkOut = waktuSekarang;
     await recordToUpdate.save();
 
-    // Format data untuk respons
     const formattedData = {
-        userId: recordToUpdate.userId,
-        nama: userName, // Diambil dari token
-        checkInTime: format(recordToUpdate.checkInTime, "yyyy-MM-dd HH:mm:ssXXX", { timeZone }),
-        checkOutTime: format(recordToUpdate.checkOutTime, "yyyy-MM-dd HH:mm:ssXXX", { timeZone }),
-        tanggal: recordToUpdate.tanggal,
+      userId: recordToUpdate.userId,
+      checkIn: format(recordToUpdate.checkIn, "yyyy-MM-dd HH:mm:ssXXX", {
+        timeZone,
+      }),
+      checkOut: format(recordToUpdate.checkOut, "yyyy-MM-dd HH:mm:ssXXX", {
+        timeZone,
+      }),
     };
 
     res.json({
@@ -109,38 +120,36 @@ exports.CheckOut = async (req, res) => {
       data: formattedData,
     });
   } catch (error) {
-    res.status(500).json({ message: "Terjadi kesalahan pada server", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Terjadi kesalahan pada server", error: error.message });
   }
 };
 
-/**
- * Controller untuk Menghapus Presensi
- */
+
+// DELETE PRESENSI
+
 exports.deletePresensi = async (req, res) => {
   try {
-    const { id: userId, role } = req.user;
+    const { id: userId } = req.user;
     const presensiId = req.params.id;
-    
-    // Perbaikan: Tambahkan 'include: User' jika ingin memverifikasi role admin
-    const recordToDelete = await Presensi.findByPk(presensiId); 
+
+    const recordToDelete = await Presensi.findByPk(presensiId);
 
     if (!recordToDelete) {
       return res
         .status(404)
         .json({ message: "Catatan presensi tidak ditemukan." });
     }
-    
-    // Perbaikan: Otorisasi. Hanya pemilik atau Admin yang boleh menghapus
-    if (recordToDelete.userId !== userId && role !== 'admin') { 
+
+    if (recordToDelete.userId !== userId) {
       return res
         .status(403)
-        .json({ message: "Akses ditolak: Anda tidak diizinkan menghapus catatan ini." });
+        .json({ message: "Akses ditolak: Anda bukan pemilik catatan ini." });
     }
-    
+
     await recordToDelete.destroy();
-    // Menggunakan 200 OK dengan pesan (atau 204 No Content)
-    res.status(200).json({ message: "Catatan presensi berhasil dihapus." });
-    
+    res.status(204).send();
   } catch (error) {
     res
       .status(500)
@@ -148,43 +157,49 @@ exports.deletePresensi = async (req, res) => {
   }
 };
 
-/**
- * Controller untuk Memperbarui Presensi
- */
+
+// UPDATE PRESENSI
+
 exports.updatePresensi = async (req, res) => {
   try {
-    const { id: requesterId, role } = req.user;
     const presensiId = req.params.id;
-    // PERBAIKAN: Hanya izinkan update checkInTime atau checkOutTime. Kolom 'nama' dihapus.
-    const { checkInTime, checkOutTime } = req.body; 
-    
-    if (checkInTime === undefined && checkOutTime === undefined) {
+    const { checkIn, checkOut } = req.body;
+
+    if (checkIn === undefined && checkOut === undefined) {
       return res.status(400).json({
         message:
-          "Request body tidak berisi data yang valid untuk diupdate (checkInTime atau checkOutTime).",
+          "Request body tidak berisi data yang valid untuk diupdate (checkIn, checkOut, atau nama).",
+      });
+    }
+
+    const isValidDate = (value) => {
+      const date = new Date(value);
+      return !isNaN(date.getTime());
+    };
+
+    if (checkIn && !isValidDate(checkIn)) {
+      return res.status(400).json({
+        message:
+          "Format checkIn tidak valid. Gunakan format 'YYYY-MM-DD HH:mm:ss'",
+      });
+    }
+
+    if (checkOut && !isValidDate(checkOut)) {
+      return res.status(400).json({
+        message:
+          "Format checkOut tidak valid. Gunakan format 'YYYY-MM-DD HH:mm:ss'",
       });
     }
 
     const recordToUpdate = await Presensi.findByPk(presensiId);
-    
     if (!recordToUpdate) {
       return res
         .status(404)
         .json({ message: "Catatan presensi tidak ditemukan." });
     }
 
-    // Otorisasi: Hanya pemilik atau Admin yang boleh update
-    if (recordToUpdate.userId !== requesterId && role !== 'admin') {
-      return res
-        .status(403)
-        .json({ message: "Akses ditolak: Anda tidak diizinkan mengubah catatan ini." });
-    }
-
-    // Update kolom yang tersedia (gunakan operator nullish coalescing ?? atau || jika ingin mempertahankan nilai lama)
-    // Gunakan ?? jika Anda ingin mengizinkan null di req.body
-    recordToUpdate.checkInTime = checkInTime || recordToUpdate.checkInTime; 
-    recordToUpdate.checkOutTime = checkOutTime || recordToUpdate.checkOutTime; 
-    
+    recordToUpdate.checkIn = checkIn || recordToUpdate.checkIn;
+    recordToUpdate.checkOut = checkOut || recordToUpdate.checkOut;
     await recordToUpdate.save();
 
     res.json({
@@ -192,8 +207,9 @@ exports.updatePresensi = async (req, res) => {
       data: recordToUpdate,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Terjadi kesalahan pada server", error: error.message });
+    res.status(500).json({
+      message: "Terjadi kesalahan pada server",
+      error: error.message,
+    });
   }
 };

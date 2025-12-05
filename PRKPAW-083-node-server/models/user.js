@@ -7,19 +7,17 @@ module.exports = (sequelize, DataTypes) => {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
-     * The models/index file will call this method automatically.
+     * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // 1. Implementasi relasi: User.hasMany(Presensi)
-      User.hasMany(models.Presensi, {
-        foreignKey: 'userId', // Ini adalah kolom Foreign Key yang akan ada di tabel Presensi
-        as: 'presensiList', // Alias untuk relasi (digunakan saat melakukan 'include')
-        onDelete: 'CASCADE', // Opsi: Jika user dihapus, data presensi terkait ikut terhapus
-      });
+      // Definisikan relasi di sini jika ada
+    User.hasMany(models.Presensi, { 
+      foreignKey: 'userId' });
+      as: 'presensi' 
+      
     }
   }
   User.init({
-    // Kolom 'id' (Primary Key) secara default akan ditambahkan oleh Sequelize
     nama: {
       type: DataTypes.STRING,
       allowNull: false

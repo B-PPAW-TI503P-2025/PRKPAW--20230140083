@@ -1,37 +1,74 @@
-const express = require('express'); // [cite: 98]
-const router = express.Router(); // [cite: 99]
+ 	const express = require('express');
+ 	const router = express.Router();
+ 	
+ 	let books = [
+ 	  {id: 1, title: 'Book 1', author: 'Author 1'},
+ 	  {id: 2, title: 'Book 2', author: 'Author 2'}
+ 	];
+ 	
+ 	router.get('/', (req, res) => {
+ 	  res.json(books);
+ 	});
+ 	
+ 	router.get('/:id', (req, res) => {
+ 	  const book = books.find(b => b.id === parseInt(req.params.id));
+ 	  if (!book) return res.status(404).send('Book not found');
+ 	  res.json(book);
+ 	});
+ 	
+ 	router.post('/', (req, res) => {
+ 	  const { title, author } = req.body;
+ 	  if (!title || !author) {
+ 	      return res.status(400).json({ message: 'Title and author are required' });
+ 	  }
+ 	  const book = {
+ 	    id: books.length + 1,
+ 	    title,
+ 	    author
+ 	  };
+ 	  books.push(book);
+ 	  res.status(201).json(book);
+ 	});
+ 	
+ 
+router.put('/:id', (req, res) => {
+    // 1. Cari buku berdasarkan ID
+    const book = books.find(b => b.id === parseInt(req.params.id));
+    if (!book) {
+        // Jika buku tidak ditemukan, kirim 404
+        return res.status(404).send('Book not found');
+    }
 
-// Data sementara dalam bentuk array [cite: 100]
-let books = [
-  {id: 1, title: 'Book 1', author: 'Author 1'}, // [cite: 101]
-  {id: 2, title: 'Book 2', author: 'Author 2'}  // [cite: 102]
-];
+    // 2. Validasi input dari body
+    const { title, author } = req.body;
+    if (!title || !author) {
+        // Jika title atau author kosong, kirim 400 Bad Request
+        return res.status(400).json({ message: 'Title and author are required' });
+    }
 
-// GET semua buku [cite: 104]
-router.get('/', (req, res) => {
-  res.json(books); // [cite: 105]
+    // 3. Perbarui data buku
+    book.title = title;
+    book.author = author;
+
+    // 4. Kirim respons buku yang sudah diperbarui
+    res.json(book);
 });
+ 
 
-// GET buku berdasarkan ID [cite: 107]
-router.get('/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id)); // [cite: 108]
-  if (!book) return res.status(404).send('Book not found'); // [cite: 109]
-  res.json(book); // [cite: 110]
+router.delete('/:id', (req, res) => {
+    // 1. Cari indeks buku berdasarkan ID
+    const index = books.findIndex(b => b.id === parseInt(req.params.id));
+
+    // 2. Periksa apakah buku ditemukan (index >= 0)
+    if (index === -1) {
+        // Jika buku tidak ditemukan, kirim 404
+        return res.status(404).send('Book not found');
+    }
+
+    // 3. Hapus buku dari array
+    const deletedBook = books.splice(index, 1);
+
+     
+    res.json(deletedBook[0]);
 });
-
-// POST (membuat) buku baru [cite: 112]
-router.post('/', (req, res) => {
-  const { title, author } = req.body; // [cite: 113]
-  if (!title || !author) {
-    return res.status(400).json({ message: 'Title and author are required' }); // [cite: 114, 115]
-  }
-  const newBook = {
-    id: books.length + 1, // [cite: 118]
-    title, // [cite: 119]
-    author // [cite: 120]
-  };
-  books.push(newBook); // [cite: 122]
-  res.status(201).json(newBook); // [cite: 123]
-});
-
-module.exports = router; // [cite: 125]
+ 	module.exports = router;

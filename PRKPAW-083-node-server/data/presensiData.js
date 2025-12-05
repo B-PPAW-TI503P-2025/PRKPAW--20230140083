@@ -1,5 +1,4 @@
 const presensiRecords = [
-  // Kita bisa mulai dengan data contoh
   {
     userId: 456,
     nama: 'User Karyawan',

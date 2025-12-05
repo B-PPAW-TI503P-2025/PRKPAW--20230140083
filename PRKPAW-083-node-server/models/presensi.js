@@ -1,57 +1,48 @@
 'use strict';
 const {
-  Model,
-  DataTypes
+  Model
 } = require('sequelize');
-module.exports = (sequelize) => {
+module.exports = (sequelize, DataTypes) => {
   class Presensi extends Model {
-   
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
     static associate(models) {
-     
-      Presensi.belongsTo(models.User, {
-        foreignKey: 'userId', // Ini adalah kolom Foreign Key yang menghubungkan ke tabel User
-        as: 'user', // Alias untuk relasi, digunakan saat melakukan 'include'
+      Presensi.belongsTo(models.User, { 
+        foreignKey: "userId",
+        as: 'user'  
       });
     }
   }
-  Presensi.init({
-    // 2. Kolom 'nama' dihapus karena diambil dari relasi User
-    
-    // Kolom userId dipertahankan sebagai Foreign Key
-    userId: { 
+Presensi.init({
+    userId: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    
-    // Perbaikan nama kolom waktu menjadi CheckInTime (lebih deskriptif)
-    checkInTime: { 
+    checkIn: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW, // Nilai default saat Check-In dibuat
     },
-    
-    // Perbaikan nama kolom waktu menjadi CheckOutTime
-    checkOutTime: { 
+    checkOut: {
       type: DataTypes.DATE,
-      allowNull: true, // Boleh null jika belum Check-Out
+      allowNull: true, 
     },
-    
-    // Penambahan kolom tanggal untuk query harian yang lebih mudah
-    tanggal: { 
-        type: DataTypes.DATEONLY, // Hanya menyimpan tanggal (YYYY-MM-DD)
+    latitude: {
+        type: DataTypes.DECIMAL(10, 7),
         allowNull: false,
-        defaultValue: DataTypes.NOW,
-    }
+      },
+      longitude: {
+        type: DataTypes.DECIMAL(10, 7),
+        allowNull: false,
+      },
+      buktiFoto: {
+        type: DataTypes.STRING,
+      }
   }, {
     sequelize,
     modelName: 'Presensi',
-    // Opsional: Untuk mencegah duplikasi presensi Check-In per hari
-    indexes: [
-        {
-            unique: true,
-            fields: ['userId', 'tanggal']
-        }
-    ]
   });
   return Presensi;
 };

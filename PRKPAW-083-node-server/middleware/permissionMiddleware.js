@@ -1,50 +1,30 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
-const SECRET_KEY = process.env.JWT_SECRET || 'RA_SECRET_KEY_2024'; 
-exports.verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  let token = null;
+const JWT_SECRET = process.env.JWT_SECRET;
 
-  if (!authHeader) {
-    return res.status(401).json({ message: 'Akses ditolak: Token tidak disediakan.' });
+exports.authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (token == null) {
+    return res.status(401).json({ message: "Akses ditolak. Token tidak disediakan." });
   }
 
-
-  if (authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-  }
-
-  if (!token) {
-  
-    return res.status(401).json({ message: 'Format token tidak valid. Gunakan format "Bearer <token>".' });
-  }
-
-  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+  jwt.verify(token, JWT_SECRET, (err, userPayload) => {
     if (err) {
-      
-      console.error('JWT Error:', err.message);
-      return res.status(403).json({ message: 'Token tidak valid atau kedaluwarsa.' });
+      return res.status(403).json({ message: "Token tidak valid atau kedaluwarsa." });
     }
 
-    
-    req.user = decoded; 
+    req.user = userPayload;
     next();
   });
 };
 
-
 exports.isAdmin = (req, res, next) => {
-  
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && req.user.role === "admin") {
     next();
   } else {
-   
-    return res.status(403).json({ message: 'Akses ditolak: Hanya untuk admin.' });
+    return res.status(403).json({ message: "Akses ditolak. Hanya untuk admin." });
   }
-};
-
-
-exports.generateToken = (userPayload) => {
-  
-  return jwt.sign(userPayload, SECRET_KEY, { expiresIn: '1d' });
 };
