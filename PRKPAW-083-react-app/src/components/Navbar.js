@@ -1,5 +1,3 @@
-// src/components/Navbar.jsx   ← taruh di sini
-
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -62,9 +60,18 @@ function Navbar() {
             </Link>
 
             <Link
-              to="/attendance"
+              to="/monitoring"
               className={`px-6 py-2.5 rounded-full font-medium transition-all ${
-                isActive("/attendance") ? activeClass : inactiveClass
+                isActive("/monitoring") ? activeClass : inactiveClass
+              }`}
+            >
+              Monitoring
+            </Link>
+
+            <Link
+              to="/Presensi"
+              className={`px-6 py-2.5 rounded-full font-medium transition-all ${
+                isActive("/Presensi") ? activeClass : inactiveClass
               }`}
             >
               Presensi
@@ -139,10 +146,10 @@ function Navbar() {
               Dashboard
             </Link>
             <Link
-              to="/attendance"
+              to="/Presensi"
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-6 py-3 rounded-full font-medium ${
-                isActive("/attendance") ? activeClass : "text-gray-700"
+                isActive("/Presensi") ? activeClass : "text-gray-700"
               }`}
             >
               Presensi
